@@ -1,0 +1,32 @@
+{
+  "name": "PlaceHolder",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "Modules": {
+        "$path": "Modules"
+      },
+      "Services": {
+        "$path": "Services"
+      },
+      "Assets": {
+        "$path": "Assets"
+      }
+    },
+
+    "ServerScriptService": {
+      "Server": {
+        "$path": "Server"
+      }
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "Client"
+        }
+      }
+    }
+  }
+}
