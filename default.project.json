@@ -1,0 +1,35 @@
+{
+  "name": "BlackVein",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "Services": {
+        "$path": "Services"
+      },
+      "Modules": {
+        "$path": "Modules"
+      },
+      "Assets": {
+        "$path": "Assets"
+      }
+    },
+
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    }
+  }
+}

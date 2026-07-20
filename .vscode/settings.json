@@ -1,0 +1,5 @@
+{
+    "stylua.targetReleaseVersion": "latest",
+    "luau-lsp.require.mode": "roblox",
+  "luau-lsp.package.sourcemap": "../sourcemap.json"
+}
