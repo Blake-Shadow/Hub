@@ -23,7 +23,6 @@ local EntityTypes = require("./EntityTypes")
 -- VARIABLES --
 -----------------------------
 local EntityService = {}
-local DEBUG_PRINT_ON_APPLY = true
 
 -- Registry: Weak-valued table for automatic memory management.
 -- If a Model is destroyed, it is removed from the registry automatically.
@@ -32,37 +31,6 @@ setmetatable(activeEntities, { __mode = "k" })
 -----------------------------
 -- PRIVATE FUNCTIONS --
 -----------------------------
-local function ToStringValue(value: any): string
-	local valueType = typeof(value)
-	if valueType == "Vector3" or valueType == "Color3" or valueType == "CFrame" then
-		return tostring(value)
-	end
-
-	if valueType == "table" then
-		return "<table>"
-	end
-
-	return tostring(value)
-end
-
-local function PrintDictionary(prefix: string, dictionary: { [string]: any })
-	local keys = {}
-	for key in pairs(dictionary) do
-		table.insert(keys, key)
-	end
-	table.sort(keys)
-
-	for _, key in ipairs(keys) do
-		print(string.format("[EntityService] %s %s = %s", prefix, key, ToStringValue(dictionary[key])))
-	end
-end
-
-local function PrintEntityDebug(model: Model, appliedData: EntityTypes.EntityStats)
-	print(string.format("[EntityService] ===== Entity Debug: %s =====", model:GetFullName()))
-	PrintDictionary("AppliedStat", appliedData)
-	PrintDictionary("Attribute", model:GetAttributes())
-	print("[EntityService] =================================")
-end
 
 -----------------------------
 -- PUBLIC FUNCTIONS --
@@ -94,10 +62,6 @@ function EntityService.Apply(model: Model, data: EntityTypes.EntityStats)
 	end
 	-- Sync the state to the network
 	EntityNetwork.SyncEntity(model, data)
-
-	if DEBUG_PRINT_ON_APPLY then
-		PrintEntityDebug(model, data)
-	end
 end
 
 -- Safely retrieves data from a model without knowing if it's a property or attribute
@@ -128,10 +92,6 @@ end
 -- Returns a copy of all attributes on the model
 function EntityService.Snapshot(model: Model): { [string]: any }
 	return model:GetAttributes()
-end
-
-function EntityService.DebugPrint(model: Model)
-	PrintEntityDebug(model, EntityService.Snapshot(model))
 end
 
 -- Returns the full registry for batch operations

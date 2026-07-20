@@ -6,7 +6,6 @@
 -----------------------------
 -- SERVICES --
 -----------------------------
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -----------------------------
 -- DEPENDENCIES --

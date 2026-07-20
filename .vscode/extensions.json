@@ -2,5 +2,8 @@
   "recommendations": [
     "johnnymorganz.luau-lsp",
     "evaera.vscode-rojo"
+  ],
+  "unwantedRecommendations": [
+    "kampfkarren.selene-vscode"
   ]
 }

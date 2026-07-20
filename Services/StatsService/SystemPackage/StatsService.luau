@@ -14,7 +14,7 @@ local Players = game:GetService("Players")
 -----------------------------
 local StatsType = require("./StatsType")
 local StatsNetwork = require("./StatsNetwork")
-local GameMath = require(ReplicatedStorage.Modules.GameMath.GameMath)
+local GameMath = require(ReplicatedStorage.Modules.Helpers.GameMath.GameMath)
 
 -----------------------------
 -- VARIABLES --

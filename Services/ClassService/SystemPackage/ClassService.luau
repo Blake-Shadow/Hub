@@ -31,6 +31,7 @@ local classRegistry: { [string]: ClassTypes.ClassConfig } = {}
 local activeEntityProfiles: { [Instance]: ClassTypes.ActiveEntityState } = {}
 local entityDataKeys: { [Instance]: string } = {}
 local classChangedHandlers: { (instance: Instance, className: string) -> () } = {}
+local DEBUG_PRINT_SYNC_DATA = false
 
 -- Constant data path keys used inside DataService mutations
 local PROFILE_DATA_PATH = "ClassProfile"
@@ -52,6 +53,77 @@ local function DeepFreeze(target: any)
 		end
 	end
 	table.freeze(target)
+end
+
+local function PrintStatTable(prefix: string, stats: { [string]: any })
+	local keys = {}
+	for key in pairs(stats) do
+		table.insert(keys, key)
+	end
+	table.sort(keys)
+
+	for _, key in ipairs(keys) do
+		print(string.format("[ClassService] %s %s = %s", prefix, key, tostring(stats[key])))
+	end
+end
+
+local function GetBaseStats(className: string): { [string]: any }?
+	local config = classRegistry[className]
+	if not config then
+		return nil
+	end
+
+	local rawConfig = config :: any
+	if rawConfig and rawConfig.BaseStats then
+		return rawConfig.BaseStats
+	end
+
+	return nil
+end
+
+local function BuildSyncData(instance: Instance): { [string]: any }
+	local state = activeEntityProfiles[instance]
+	local className = if state then state.ClassName else "None"
+	local baseStats = GetBaseStats(className)
+	local skillsCount = 0
+
+	if state then
+		for _ in state.UnlockedSkills do
+			skillsCount += 1
+		end
+	end
+
+	return {
+		ClassName = className,
+		ActiveSkillsCount = skillsCount,
+		BaseMaxHealth = if baseStats and baseStats.BaseMaxHealth then baseStats.BaseMaxHealth else 100,
+		BaseWalkSpeed = if baseStats and baseStats.BaseWalkSpeed then baseStats.BaseWalkSpeed else 16,
+	}
+end
+
+local function DebugPrintSyncData(instance: Instance, syncData: { [string]: any })
+	if not DEBUG_PRINT_SYNC_DATA then
+		return
+	end
+
+	local state = activeEntityProfiles[instance]
+	local className = if state then state.ClassName else "None"
+	print(string.format("[ClassService] SyncData for %s (%s)", instance.Name, className))
+	PrintStatTable("SyncStat", syncData)
+end
+
+local function DebugPrintClassStats(className: string, config: ClassTypes.ClassConfig)
+	if not DEBUG_PRINT_SYNC_DATA then
+		return
+	end
+
+	local baseStats = config.BaseStats
+	print(string.format("[ClassService] Loaded class stats for %s", className))
+	PrintStatTable("BaseStat", {
+		ClassName = className,
+		BaseMaxHealth = baseStats.BaseMaxHealth,
+		BaseWalkSpeed = baseStats.BaseWalkSpeed,
+	})
 end
 
 -- Programmatically gathers behavior variables from active folder instances
@@ -167,6 +239,8 @@ function ClassService.LoadEntity(instance: Instance)
 	-- 3. Save to active cache
 	activeEntityProfiles[instance] = entityState
 
+	DebugPrintSyncData(instance, BuildSyncData(instance))
+
 	-- 4. Replicate state
 	ReplicateProfileState(instance)
 	NotifyClassChanged(instance, entityState.ClassName)
@@ -199,6 +273,8 @@ function ClassService.SetClass(instance: Instance, newClassName: string)
 		entityState.UnlockedSkillTree = {}
 	end
 
+	DebugPrintSyncData(instance, BuildSyncData(instance))
+
 	-- 3. Trigger Sync (Only for players, handled by ReplicateProfileState check)
 	ReplicateProfileState(instance)
 	NotifyClassChanged(instance, newClassName)
@@ -218,33 +294,12 @@ end
 
 -- Unified data provider used by EntityHandler to pull state safely
 function ClassService.GetSyncData(instance: Instance)
-	local state = activeEntityProfiles[instance]
-
-	-- Fallback trap: If the profile isn't loaded yet, hand over system defaults
-	if not state or state.ClassName == "None" then
-		return {
-			ClassName = "None",
-			ActiveSkillsCount = 0,
-			BaseMaxHealth = 100,
-			BaseWalkSpeed = 16,
-		}
+	local syncData = BuildSyncData(instance)
+	if DEBUG_PRINT_SYNC_DATA then
+		DebugPrintSyncData(instance, syncData)
 	end
 
-	-- Extract custom configurations registered dynamically from your ModuleScripts
-	local config = classRegistry[state.ClassName]
-	local rawConfig = config :: any
-	local skillsCount = 0
-
-	for _ in state.UnlockedSkills do
-		skillsCount += 1
-	end
-
-	return {
-		ClassName = state.ClassName,
-		ActiveSkillsCount = skillsCount,
-		BaseMaxHealth = if config and rawConfig.BaseMaxHealth then rawConfig.BaseMaxHealth else 100,
-		BaseWalkSpeed = if config and rawConfig.BaseWalkSpeed then rawConfig.BaseWalkSpeed else 16,
-	}
+	return syncData
 end
 
 function ClassService.Init()
@@ -285,6 +340,7 @@ function ClassService.Init()
 
 					-- Clear success notification for your console logging pipeline
 					print(string.format("[ClassService] Successfully loaded class: ✅ %s", classDir.Name))
+					DebugPrintClassStats(classDir.Name, config)
 				else
 					-- High-visibility warning tracking exactly which module script broke and why
 					warn(

@@ -41,6 +41,7 @@ local activeProfiles: { [Instance]: ActorMovementProfile } = {}
 local baseWalkSpeedChangedConnections: { [Instance]: RBXScriptConnection } = {}
 local characterAddedConnections: { [Player]: RBXScriptConnection } = {}
 local missingBaseStatWarned: { [Instance]: boolean } = {}
+local initialWalkSpeedApplyDelay = 0.15
 
 local defaultConfig: MovementConfig = {
 	ModesDefault = {
@@ -172,6 +173,8 @@ local function ApplyWalkSpeed(instance: Instance, profile: ActorMovementProfile)
 					tostring(baseWalkSpeed)
 				)
 			)
+			humanoid.WalkSpeed = 0
+			return
 		end
 	end
 
@@ -181,6 +184,17 @@ local function ApplyWalkSpeed(instance: Instance, profile: ActorMovementProfile)
 	end
 
 	humanoid.WalkSpeed = finalWalkSpeed
+end
+
+local function ScheduleInitialWalkSpeedApply(instance: Instance, profile: ActorMovementProfile)
+	task.delay(initialWalkSpeedApplyDelay, function()
+		local currentProfile = activeProfiles[instance]
+		if currentProfile ~= profile then
+			return
+		end
+
+		ApplyWalkSpeed(instance, profile)
+	end)
 end
 
 local function DisconnectConnection(registry: { [Instance]: RBXScriptConnection }, key: Instance)
@@ -246,7 +260,7 @@ local function GetOrCreateProfile(instance: Instance): ActorMovementProfile
 	}
 
 	activeProfiles[instance] = profile
-	ApplyWalkSpeed(instance, profile)
+	ScheduleInitialWalkSpeedApply(instance, profile)
 	return profile
 end
 
@@ -423,14 +437,14 @@ function MovementService:SetConfig(config: MovementConfig)
 
 	for instance, profile in pairs(activeProfiles) do
 		BindBaseWalkSpeedSignal(instance)
-		ApplyWalkSpeed(instance, profile)
+		ScheduleInitialWalkSpeedApply(instance, profile)
 	end
 end
 
 function MovementService:RegisterEntity(instance: Instance)
 	local profile = GetOrCreateProfile(instance)
 	BindBaseWalkSpeedSignal(instance)
-	ApplyWalkSpeed(instance, profile)
+	ScheduleInitialWalkSpeedApply(instance, profile)
 
 	if instance:IsA("Player") then
 		local player = instance
@@ -440,7 +454,7 @@ function MovementService:RegisterEntity(instance: Instance)
 				BindBaseWalkSpeedSignal(player)
 				local currentProfile = activeProfiles[player]
 				if currentProfile then
-					ApplyWalkSpeed(player, currentProfile)
+					ScheduleInitialWalkSpeedApply(player, currentProfile)
 				end
 			end)
 		end
