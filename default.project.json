@@ -13,20 +13,7 @@
       "Assets": {
         "$path": "Assets"
       }
-    },
-
-    "ServerScriptService": {
-      "Server": {
-        "$path": "Server"
-      }
-    },
-
-    "StarterPlayer": {
-      "StarterPlayerScripts": {
-        "Client": {
-          "$path": "Client"
-        }
-      }
     }
+
   }
 }
