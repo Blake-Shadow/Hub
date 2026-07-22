@@ -11,7 +11,9 @@ local RunService = game:GetService("RunService")
 -----------------------------
 -- DEPENDENCIES --
 -----------------------------
+local BufferNetwork = require(ReplicatedStorage.Services.BufferService.SystemPackage.BufferNetwork) :: any
 local StateTypes = require("./StateTypes")
+local StateCodecs = require("./Codecs/StateCodecs")
 -----------------------------
 -- TYPES --
 -----------------------------
@@ -81,27 +83,30 @@ end
 -----------------------------
 --[[ [SERVER] Replicate active states and stack counts to a specific player ]]
 function StateNetwork:ReplicateToPlayer(player: Player, payload: NetworkStatePayload)
+	StateCodecs.EnsureRegistered()
 	local remote = self.StateReplicated
 	if remote then
-		remote:FireClient(player, payload)
+		BufferNetwork.FireClient(remote, player, StateCodecs.ReplicationCodecName, payload)
 	end
 end
 
 --[[ [SERVER] Batch replicate state data to all active players ]]
 function StateNetwork:ReplicateToAll(payloads: { [Player]: NetworkStatePayload })
+	StateCodecs.EnsureRegistered()
 	local remote = self.StateReplicated
 	if remote then
 		for player, payload in pairs(payloads) do
-			remote:FireClient(player, payload)
+			BufferNetwork.FireClient(remote, player, StateCodecs.ReplicationCodecName, payload)
 		end
 	end
 end
 
 --[[ [CLIENT] Safely dispatch an action request to the server with optional payloads ]]
 function StateNetwork:RequestAction(actionName: string, data: any)
+	StateCodecs.EnsureRegistered()
 	local remote = self.StateActionRequest
 	if remote then
-		remote:FireServer(actionName, data)
+		BufferNetwork.FireServer(remote, StateCodecs.ActionRequestCodecName, StateCodecs.BuildActionRequestPayload(actionName, data))
 	end
 end
 
@@ -117,19 +122,22 @@ end
 
 --[[ Centralized Lifecycle Init matching Shadow's architecture ]]
 function StateNetwork:Init()
+	StateCodecs.EnsureRegistered()
+
 	if RunService:IsClient() then
 		local remote = self.StateReplicated
 		if remote then
-			remote.OnClientEvent:Connect(function(payload: NetworkStatePayload)
+			BufferNetwork.BindClientEvent(remote, StateCodecs.ReplicationCodecName, function(payload: any)
 				if activeReplicationHandler then
-					activeReplicationHandler(payload)
+					activeReplicationHandler(payload :: NetworkStatePayload)
 				end
 			end)
 		end
 	elseif RunService:IsServer() then
 		local remote = self.StateActionRequest
 		if remote then
-			remote.OnServerEvent:Connect(function(player: Player, actionName: string, data: any)
+			BufferNetwork.BindServerEvent(remote, StateCodecs.ActionRequestCodecName, function(player: Player, payload: any)
+				local actionName, data = StateCodecs.ExtractActionRequestPayload(payload)
 				if activeActionRequestHandler then
 					activeActionRequestHandler(player, actionName, data)
 				end

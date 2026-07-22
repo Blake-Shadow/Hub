@@ -74,7 +74,7 @@ function StatsService:RegistryEntity(
 	LiveProfiles[entity] = profile
 
 	if entity:IsA("Player") then
-		StatsNetwork.SyncProfileRemote(entity, profile)
+		StatsNetwork.SyncProfile(entity, profile)
 	end
 end
 
@@ -107,7 +107,7 @@ function StatsService:UpdateBaseStats(entity: Instance, updatedBlueprints: { [st
 
 	-- Sync up player UI instances over network
 	if entity:IsA("Player") then
-		StatsNetwork.SyncProfileRemote(entity, profile)
+		StatsNetwork.SyncProfile(entity, profile)
 	end
 end
 
@@ -137,7 +137,7 @@ function StatsService:ModifyResource(entity: Instance, poolKey: string, amount: 
 		pool.Current = math.clamp(pool.Current + amount, 0, maxLimit)
 
 		if entity:IsA("Player") then
-			StatsNetwork.SyncProfileRemote(entity, profile)
+			StatsNetwork.SyncProfile(entity, profile)
 		end
 	end
 end

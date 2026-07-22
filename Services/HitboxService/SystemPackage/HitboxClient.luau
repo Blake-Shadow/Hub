@@ -42,19 +42,27 @@ end
 -- PUBLIC FUNCTIONS --
 -----------------------------
 function HitboxClient.Init()
-	-- Clean listener hook using our streamlined network layer
-	HitboxNetwork.VisualRemote.OnClientEvent:Connect(function(actionType: string, ...)
-		local args = { ... }
+	HitboxNetwork.SetVisualHandler(function(payload: any)
+		if type(payload) ~= "table" then
+			return
+		end
 
-		if actionType == "HitImpactVisual" then
-			local victimModel = args[1] :: Model?
+		if payload.ActionType == "Impact" then
+			local victimModel = if typeof(payload.VictimModel) == "Instance" and payload.VictimModel:IsA("Model")
+				then payload.VictimModel
+				else nil
 			PlayHitImpactVisual(victimModel)
-		else
-			local shapeType = actionType
-			local targetCFrame = args[1] :: CFrame?
+			return
+		end
+
+		local shapeType = payload.ShapeType
+		local targetCFrame = payload.TargetCFrame
+		if type(shapeType) == "string" and typeof(targetCFrame) == "CFrame" then
 			PlayShapeVisual(shapeType, targetCFrame)
 		end
 	end)
+
+	HitboxNetwork.Init()
 end
 -----------------------------
 -- MAIN --

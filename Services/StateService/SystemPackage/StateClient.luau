@@ -55,6 +55,8 @@ function StateClient:Init()
 	StateNetwork:RegisterReplicationHandler(function(payload: NetworkStatePayload)
 		OnStateReplicated(payload)
 	end)
+
+	StateNetwork:Init()
 end
 -----------------------------
 -- MAIN --

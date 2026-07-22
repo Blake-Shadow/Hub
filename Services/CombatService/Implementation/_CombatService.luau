@@ -29,9 +29,9 @@ local _CombatService = {}
 local DEBUG_HITBOX_COLOR = Color3.fromRGB(255, 80, 80)
 local DEBUG_HITBOX_DURATION = 0.5
 local DEBUG_ENABLED = true
-local PUNCH_FRONT_MARGIN = 1.5
-local PUNCH_PULSE_COUNT = 3
-local PUNCH_PULSE_DELAY = 0.04
+local PUNCH_FRONT_MARGIN = 2
+local PUNCH_PULSE_COUNT = 5
+local PUNCH_PULSE_DELAY = 0.05
 
 -----------------------------
 -- PRIVATE FUNCTIONS --

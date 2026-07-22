@@ -13,7 +13,9 @@ local RunService = game:GetService("RunService")
 -----------------------------
 -- DEPENDENCIES --
 -----------------------------
+local BufferNetwork = require(ReplicatedStorage.Services.BufferService.SystemPackage.BufferNetwork) :: any
 local CombatTypes = require("./CombatTypes")
+local CombatCodecs = require("./Codecs/CombatCodecs")
 
 -----------------------------
 -- TYPES --
@@ -103,6 +105,7 @@ local function BuildNetworkDirectory(config: CombatNetworkConfig?): (RemoteEvent
 	return builtActionRequestRemote :: RemoteEvent, builtFeedbackRemote :: RemoteEvent
 end
 
+
 -----------------------------
 -- PUBLIC FUNCTIONS --
 -----------------------------
@@ -117,9 +120,10 @@ function CombatNetwork:RegisterFeedbackHandler(handler: (payload: CombatFeedback
 end
 
 function CombatNetwork:RequestAction(payload: CombatActionRequestPayload)
+	CombatCodecs.EnsureRegistered()
 	local remote = actionRequestRemote
 	if remote then
-		remote:FireServer(payload)
+		BufferNetwork.FireServer(remote, CombatCodecs.ActionRequestCodecName, payload)
 	end
 end
 
@@ -132,30 +136,32 @@ function CombatNetwork:RequestPunch(direction: Vector3?)
 end
 
 function CombatNetwork:ReplicateFeedbackToPlayer(player: Player, payload: CombatFeedbackPayload)
+	CombatCodecs.EnsureRegistered()
 	local remote = feedbackRemote
 	if remote then
-		remote:FireClient(player, payload)
+		BufferNetwork.FireClient(remote, player, CombatCodecs.FeedbackCodecName, payload)
 	end
 end
 
 function CombatNetwork:Init(config: CombatNetworkConfig?)
 	actionRequestRemote, feedbackRemote = BuildNetworkDirectory(config)
+	CombatCodecs.EnsureRegistered()
 
 	if RunService:IsServer() then
 		local remote = actionRequestRemote
 		if remote then
-			remote.OnServerEvent:Connect(function(player: Player, payload: CombatActionRequestPayload)
+			BufferNetwork.BindServerEvent(remote, CombatCodecs.ActionRequestCodecName, function(player: Player, payload: any)
 				if activeActionRequestHandler then
-					activeActionRequestHandler(player, payload)
+					activeActionRequestHandler(player, payload :: CombatActionRequestPayload)
 				end
 			end)
 		end
 	elseif RunService:IsClient() then
 		local remote = feedbackRemote
 		if remote then
-			remote.OnClientEvent:Connect(function(payload: CombatFeedbackPayload)
+			BufferNetwork.BindClientEvent(remote, CombatCodecs.FeedbackCodecName, function(payload: any)
 				if activeFeedbackHandler then
-					activeFeedbackHandler(payload)
+					activeFeedbackHandler(payload :: CombatFeedbackPayload)
 				end
 			end)
 		end

@@ -13,7 +13,9 @@ local RunService = game:GetService("RunService")
 -----------------------------
 -- DEPENDENCIES --
 -----------------------------
+local BufferNetwork = require(ReplicatedStorage.Services.BufferService.SystemPackage.BufferNetwork) :: any
 local MovementTypes = require("./MovementTypes")
+local MovementCodecs = require("./Codecs/MovementCodecs")
 
 -----------------------------
 -- TYPES --
@@ -94,44 +96,49 @@ function MovementNetwork:RegisterReplicationHandler(handler: (payload: NetworkMo
 end
 
 function MovementNetwork:RequestAction(payload: ActionRequestPayload)
+	MovementCodecs.EnsureRegistered()
 	local remote = self.ActionRequestRemote
 	if remote then
-		remote:FireServer(payload)
+		BufferNetwork.FireServer(remote, MovementCodecs.ActionRequestCodecName, payload)
 	end
 end
 
 function MovementNetwork:ReplicateToPlayer(player: Player, payload: NetworkMovementSnapshot)
+	MovementCodecs.EnsureRegistered()
 	local remote = self.StateReplicatedRemote
 	if remote then
-		remote:FireClient(player, payload)
+		BufferNetwork.FireClient(remote, player, MovementCodecs.ReplicationCodecName, payload)
 	end
 end
 
 function MovementNetwork:ReplicateToAll(payloadByPlayer: { [Player]: NetworkMovementSnapshot })
+	MovementCodecs.EnsureRegistered()
 	local remote = self.StateReplicatedRemote
 	if remote then
 		for player, payload in pairs(payloadByPlayer) do
-			remote:FireClient(player, payload)
+			BufferNetwork.FireClient(remote, player, MovementCodecs.ReplicationCodecName, payload)
 		end
 	end
 end
 
 function MovementNetwork:Init()
+	MovementCodecs.EnsureRegistered()
+
 	if RunService:IsServer() then
 		local remote = self.ActionRequestRemote
 		if remote then
-			remote.OnServerEvent:Connect(function(player: Player, payload: ActionRequestPayload)
+			BufferNetwork.BindServerEvent(remote, MovementCodecs.ActionRequestCodecName, function(player: Player, payload: any)
 				if activeActionRequestHandler then
-					activeActionRequestHandler(player, payload)
+					activeActionRequestHandler(player, payload :: ActionRequestPayload)
 				end
 			end)
 		end
 	elseif RunService:IsClient() then
 		local remote = self.StateReplicatedRemote
 		if remote then
-			remote.OnClientEvent:Connect(function(payload: NetworkMovementSnapshot)
+			BufferNetwork.BindClientEvent(remote, MovementCodecs.ReplicationCodecName, function(payload: any)
 				if activeReplicationHandler then
-					activeReplicationHandler(payload)
+					activeReplicationHandler(payload :: NetworkMovementSnapshot)
 				end
 			end)
 		end

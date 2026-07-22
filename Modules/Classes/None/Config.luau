@@ -24,7 +24,7 @@ local NoneConfig: ClassTypes.ClassConfig = {
 	ParentClass = nil,
 	BaseStats = {
 		BaseMaxHealth = 100,
-		BaseWalkSpeed = 40,
+		BaseWalkSpeed = 16,
 		
 	},
 	PrimaryResource = {

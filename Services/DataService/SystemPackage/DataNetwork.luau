@@ -12,6 +12,8 @@ local RunService = game:GetService("RunService")
 -----------------------------
 -- DEPENDENCIES --
 -----------------------------
+local BufferNetwork = require(ReplicatedStorage.Services.BufferService.SystemPackage.BufferNetwork) :: any
+local DataCodecs = require("./Codecs/DataCodecs")
 
 -----------------------------
 -- TYPES --
@@ -26,6 +28,7 @@ DataNetwork.DataUpdateRemote = nil :: any
 DataNetwork.DataRequestRemote = nil :: any
 
 local activeRequestHandler: (player: Player) -> any = nil :: any
+local activeUpdateHandler: (dataPayload: any) -> () = nil :: any
 -----------------------------
 -- PRIVATE FUNCTIONS --
 -----------------------------
@@ -72,21 +75,64 @@ end
 -- PUBLIC FUNCTIONS --
 -----------------------------
 function DataNetwork.UpdateClientData(player: Player, dataPayload: any)
-	DataNetwork.DataUpdateRemote:FireClient(player, dataPayload)
+	DataCodecs.EnsureRegistered()
+	BufferNetwork.FireClient(
+		DataNetwork.DataUpdateRemote,
+		player,
+		DataCodecs.DataUpdateCodecName,
+		DataCodecs.WrapData(dataPayload)
+	)
 end
 
 function DataNetwork.SetRequestHandler(handler: (player: Player) -> any)
 	activeRequestHandler = handler
 end
 
+function DataNetwork.SetUpdateHandler(handler: (dataPayload: any) -> ())
+	activeUpdateHandler = handler
+end
+
+function DataNetwork.RequestData(): any
+	DataCodecs.EnsureRegistered()
+	local ok, responsePayload = BufferNetwork.InvokeServer(
+		DataNetwork.DataRequestRemote,
+		DataCodecs.DataRequestCodecName,
+		DataCodecs.DataResponseCodecName,
+		DataCodecs.BuildRequestPayload()
+	)
+
+	if not ok then
+		return nil
+	end
+
+	return DataCodecs.UnwrapData(responsePayload)
+end
+
 function DataNetwork.Init()
+	DataCodecs.EnsureRegistered()
+
 	if RunService:IsServer() then
-		DataNetwork.DataRequestRemote.OnServerInvoke = function(player: Player)
+		BufferNetwork.BindServerInvoke(
+			DataNetwork.DataRequestRemote,
+			DataCodecs.DataRequestCodecName,
+			DataCodecs.DataResponseCodecName,
+			function(player: Player, _requestPayload: any)
 			if not activeRequestHandler then
 				error("[DATA NETWORK CRITICAL] Data retrieval request received, but no configuration handler was bound!")
 			end
-			return activeRequestHandler(player)
-		end
+
+			local response = activeRequestHandler(player)
+			return DataCodecs.WrapData(response)
+		end,
+			DataCodecs.WrapData(nil)
+		)
+	elseif RunService:IsClient() then
+		BufferNetwork.BindClientEvent(DataNetwork.DataUpdateRemote, DataCodecs.DataUpdateCodecName, function(payload: any)
+			local dataPayload = DataCodecs.UnwrapData(payload)
+			if activeUpdateHandler then
+				activeUpdateHandler(dataPayload)
+			end
+		end)
 	end
 end
 -----------------------------

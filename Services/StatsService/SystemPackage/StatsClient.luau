@@ -59,13 +59,15 @@ function StatsClient.OnProfileUpdated(callback: (profile: StatsType.ActorStatsPr
 end
 
 function StatsClient.Init()
-	StatsNetwork.SyncProfileRemote.OnClientEvent:Connect(function(updatedProfile: StatsType.ActorStatsProfile)
+	StatsNetwork.SetSyncProfileHandler(function(updatedProfile: StatsType.ActorStatsProfile)
 		cachedProfile = updatedProfile
 		
 		for _, callback in ipairs(updateListeners) do
 			task.spawn(callback, cachedProfile :: StatsType.ActorStatsProfile)
 		end
 	end)
+
+	StatsNetwork.Init()
 end
 -----------------------------
 -- MAIN --

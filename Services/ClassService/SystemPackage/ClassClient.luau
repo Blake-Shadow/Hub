@@ -6,9 +6,6 @@
 -----------------------------
 -- SERVICES --
 -----------------------------
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
------------------------------
 -- DEPENDENCIES --
 -----------------------------
 local ClassNetwork = require("./ClassNetwork") :: any
@@ -24,38 +21,6 @@ local ClassClient = {}
 
 local localCache: any = nil
 local changeListeners: { (newProfile: any) -> () } = {}
-
------------------------------
--- PRIVATE FUNCTIONS --
------------------------------
-local function ResolveSyncRemote(): RemoteEvent?
-	local networkRemote = ClassNetwork.SyncClassProfileRemote
-	if networkRemote then
-		return networkRemote
-	end
-
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	if not assets then
-		return nil
-	end
-
-	local remotes = assets:FindFirstChild("Remotes")
-	if not remotes then
-		return nil
-	end
-
-	local classFolder = remotes:FindFirstChild("Class")
-	if not classFolder then
-		return nil
-	end
-
-	local syncRemote = classFolder:FindFirstChild("SyncClassProfile")
-	if syncRemote and syncRemote:IsA("RemoteEvent") then
-		return syncRemote
-	end
-
-	return nil
-end
 
 -----------------------------
 -- PUBLIC FUNCTIONS --
@@ -90,28 +55,20 @@ function ClassClient.AllocateNode(nodeName: string)
 	if type(nodeName) ~= "string" or nodeName == "" then
 		return
 	end
-
-	local allocationRemote = ClassNetwork.AllocateNodeRemote
-	if allocationRemote then
-		allocationRemote:FireServer(nodeName)
-	end
+	ClassNetwork.RequestAllocateNode(nodeName)
 end
 
 -- Lifecycle Initializer
 function ClassClient.Init()
-	local syncRemote = ResolveSyncRemote()
-	if not syncRemote then
-		warn("[ClassClient] SyncClassProfile remote missing during init.")
-		return
-	end
-
-	syncRemote.OnClientEvent:Connect(function(newProfile: any)
+	ClassNetwork.SetSyncHandler(function(newProfile: any)
 		localCache = newProfile
 
 		for _, listener in ipairs(changeListeners) do
 			task.spawn(listener, newProfile)
 		end
 	end)
+
+	ClassNetwork.Init()
 end
 
 -----------------------------

@@ -11,6 +11,8 @@ local RunService = game:GetService("RunService")
 -----------------------------
 -- DEPENDENCIES --
 -----------------------------
+local BufferNetwork = require(ReplicatedStorage.Services.BufferService.SystemPackage.BufferNetwork) :: any
+local EntityCodecs = require("./Codecs/EntityCodecs")
 
 -----------------------------
 -- TYPES --
@@ -61,7 +63,8 @@ end
 -----------------------------
 -- FOR THE SERVER: Send data to everyone
 function EntityNetwork.SyncEntity(model: Model, data: {[string]: any})
-	EntityNetwork.EntitySyncRemote:FireAllClients(model, data)
+	EntityCodecs.EnsureRegistered()
+	BufferNetwork.FireAllClients(EntityNetwork.EntitySyncRemote, EntityCodecs.SyncCodecName, EntityCodecs.BuildSyncPayload(model, data))
 end
 
 -- FOR THE CLIENT: Set the function that runs when data is received
@@ -70,8 +73,15 @@ function EntityNetwork.SetSyncHandler(handler: (model: Model, data: {[string]: a
 end
 
 function EntityNetwork.Init()
+	EntityCodecs.EnsureRegistered()
+
 	if RunService:IsClient() then
-		EntityNetwork.EntitySyncRemote.OnClientEvent:Connect(function(model: Model, data: {[string]: any})
+		BufferNetwork.BindClientEvent(EntityNetwork.EntitySyncRemote, EntityCodecs.SyncCodecName, function(payload: any)
+			local model, data = EntityCodecs.ExtractSyncPayload(payload)
+			if not model or not data then
+				return
+			end
+
 			if activeSyncHandler then
 				activeSyncHandler(model, data)
 			end

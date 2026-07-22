@@ -328,7 +328,7 @@ function HitboxService.ExecuteInstant(hitbox: HitboxObjectType): { Model }
 	RenderDebug(hitbox._shape, targetCFrame, hitbox._size, hitbox._radius)
 
 	if HitboxNetwork.VisualRemote then
-		HitboxNetwork.VisualRemote:FireAllClients(hitbox._shape, targetCFrame, hitbox._size, hitbox._radius)
+		HitboxNetwork.BroadcastShapeVisual(hitbox._shape, targetCFrame, hitbox._size, hitbox._radius)
 	end
 
 	return targets
@@ -360,7 +360,7 @@ function HitboxService.StartTracking(hitbox: HitboxObjectType, duration: number,
 				hitHistory[target] = true
 				onHitCallback(target)
 				if HitboxNetwork.VisualRemote then
-					HitboxNetwork.VisualRemote:FireAllClients("HitImpactVisual", target)
+					HitboxNetwork.BroadcastImpactVisual(target)
 				end
 			end
 		end

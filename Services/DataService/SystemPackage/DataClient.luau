@@ -35,8 +35,8 @@ local changeListeners: { (newData: any) -> () } = {}
 -- Instantly returns the locally cached data profile (or requests it from the server if empty)
 function DataClient.GetData(): any
 	if not localCache then
-		-- Fire request up the network line
-		DataNetwork.DataRequestRemote:FireServer()
+		-- Request profile data through codec-backed network transport.
+		localCache = DataNetwork.RequestData()
 
 		-- Yield thread processing temporarily until replication clears
 		local start = os.time()
@@ -74,8 +74,7 @@ end
 
 -- Lifecycle Initializer
 function DataClient.Init()
-	-- Connect structural updates routed down from the server runtime clusters
-	DataNetwork.DataUpdateRemote.OnClientEvent:Connect(function(newData: any)
+	DataNetwork.SetUpdateHandler(function(newData: any)
 		localCache = newData
 
 		-- Disperse state alerts across client microservices / UI frames
@@ -83,6 +82,8 @@ function DataClient.Init()
 			task.spawn(listener, newData)
 		end
 	end)
+
+	DataNetwork.Init()
 end
 
 -----------------------------

@@ -13,6 +13,8 @@ local RunService = game:GetService("RunService")
 -----------------------------
 -- DEPENDENCIES --
 -----------------------------
+local BufferNetwork = require(ReplicatedStorage.Services.BufferService.SystemPackage.BufferNetwork) :: any
+local StatsCodecs = require("./Codecs/StatsCodecs")
 
 -----------------------------
 -- VARIABLES --
@@ -24,6 +26,8 @@ StatsNetwork.DamageNumberRemote = nil :: any
 StatsNetwork.SyncProfileRemote = nil :: any
 
 local activeAllocationHandler: (player: Player, statName: string) -> () = nil :: any
+local activeSyncProfileHandler: ((profile: any) -> ())? = nil
+local activeDamageNumberHandler: ((targetCharacter: Model, amount: number, isCritical: boolean) -> ())? = nil
 -----------------------------
 -- PRIVATE FUNCTIONS --
 -----------------------------
@@ -80,20 +84,74 @@ end
 -- PUBLIC FUNCTIONS --
 -----------------------------
 function StatsNetwork.DisplayDamage(player: Player, targetCharacter: Model, amount: number, isCritical: boolean)
-	StatsNetwork.DamageNumberRemote:FireClient(player, targetCharacter, amount, isCritical)
+	StatsCodecs.EnsureRegistered()
+	BufferNetwork.FireClient(
+		StatsNetwork.DamageNumberRemote,
+		player,
+		StatsCodecs.DamageNumberCodecName,
+		StatsCodecs.BuildDamagePayload(targetCharacter, amount, isCritical)
+	)
+end
+
+function StatsNetwork.SyncProfile(player: Player, profile: any)
+	StatsCodecs.EnsureRegistered()
+	BufferNetwork.FireClient(
+		StatsNetwork.SyncProfileRemote,
+		player,
+		StatsCodecs.SyncProfileCodecName,
+		StatsCodecs.WrapProfile(profile)
+	)
 end
 
 function StatsNetwork.SetAllocationHandler(handler: (player: Player, statName: string) -> ())
 	activeAllocationHandler = handler
 end
 
+function StatsNetwork.SetSyncProfileHandler(handler: (profile: any) -> ())
+	activeSyncProfileHandler = handler
+end
+
+function StatsNetwork.SetDamageNumberHandler(handler: (targetCharacter: Model, amount: number, isCritical: boolean) -> ())
+	activeDamageNumberHandler = handler
+end
+
+function StatsNetwork.RequestAllocateStat(statName: string)
+	StatsCodecs.EnsureRegistered()
+	local remote = StatsNetwork.AllocateStatRemote
+	if remote then
+		BufferNetwork.FireServer(remote, StatsCodecs.AllocateStatCodecName, StatsCodecs.BuildAllocatePayload(statName))
+	end
+end
+
 function StatsNetwork.Init()
+	StatsCodecs.EnsureRegistered()
+
 	if RunService:IsServer() then
-		StatsNetwork.AllocateStatRemote.OnServerEvent:Connect(function(player: Player, statName: string)
+		BufferNetwork.BindServerEvent(StatsNetwork.AllocateStatRemote, StatsCodecs.AllocateStatCodecName, function(player: Player, payload: any)
+			local statName = StatsCodecs.ExtractAllocatePayload(payload)
+			if not statName then
+				return
+			end
+
 				if not activeAllocationHandler then
 					error("[STATS NETWORK CRITICAL] Allocation request received, but no configuration handler was bound!")
 				end
 				activeAllocationHandler(player, statName)
+		end)
+	elseif RunService:IsClient() then
+		BufferNetwork.BindClientEvent(StatsNetwork.SyncProfileRemote, StatsCodecs.SyncProfileCodecName, function(payload: any)
+			if activeSyncProfileHandler then
+				activeSyncProfileHandler(StatsCodecs.UnwrapProfile(payload))
+			end
+		end)
+
+		BufferNetwork.BindClientEvent(StatsNetwork.DamageNumberRemote, StatsCodecs.DamageNumberCodecName, function(payload: any)
+			if activeDamageNumberHandler then
+				local targetCharacter, amount, isCritical = StatsCodecs.ExtractDamagePayload(payload)
+				if targetCharacter and amount and isCritical ~= nil then
+					activeDamageNumberHandler(targetCharacter, amount, isCritical)
+				end
+			end
 		end)
 	end
 end

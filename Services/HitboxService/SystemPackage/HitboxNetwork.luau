@@ -12,6 +12,8 @@ local RunService = game:GetService("RunService")
 -----------------------------
 -- DEPENDENCIES --
 -----------------------------
+local BufferNetwork = require(ReplicatedStorage.Services.BufferService.SystemPackage.BufferNetwork) :: any
+local HitboxCodecs = require("./Codecs/HitboxCodecs")
 
 -----------------------------
 -- TYPES --
@@ -21,6 +23,8 @@ local RunService = game:GetService("RunService")
 -- VARIABLES --
 -----------------------------
 local HitboxNetwork = {}
+
+local activeVisualHandler: ((payload: any) -> ())? = nil
 
 -- CONSTANTS --
 
@@ -71,6 +75,43 @@ end
 -----------------------------
 -- PUBLIC FUNCTIONS --
 -----------------------------
+function HitboxNetwork.BroadcastShapeVisual(shapeType: string, targetCFrame: CFrame, size: Vector3, radius: number)
+	HitboxCodecs.EnsureRegistered()
+	if HitboxNetwork.VisualRemote then
+		BufferNetwork.FireAllClients(
+			HitboxNetwork.VisualRemote,
+			HitboxCodecs.VisualCodecName,
+			HitboxCodecs.BuildShapePayload(shapeType, targetCFrame, size, radius)
+		)
+	end
+end
+
+function HitboxNetwork.BroadcastImpactVisual(victimModel: Model)
+	HitboxCodecs.EnsureRegistered()
+	if HitboxNetwork.VisualRemote then
+		BufferNetwork.FireAllClients(
+			HitboxNetwork.VisualRemote,
+			HitboxCodecs.VisualCodecName,
+			HitboxCodecs.BuildImpactPayload(victimModel)
+		)
+	end
+end
+
+function HitboxNetwork.SetVisualHandler(handler: (payload: any) -> ())
+	activeVisualHandler = handler
+end
+
+function HitboxNetwork.Init()
+	HitboxCodecs.EnsureRegistered()
+
+	if RunService:IsClient() and HitboxNetwork.VisualRemote then
+		BufferNetwork.BindClientEvent(HitboxNetwork.VisualRemote, HitboxCodecs.VisualCodecName, function(payload: any)
+			if activeVisualHandler then
+				activeVisualHandler(payload)
+			end
+		end)
+	end
+end
 
 -----------------------------
 -- MAIN --
