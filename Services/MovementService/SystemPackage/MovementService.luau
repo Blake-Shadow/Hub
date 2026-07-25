@@ -41,7 +41,17 @@ local activeProfiles: { [Instance]: ActorMovementProfile } = {}
 local baseWalkSpeedChangedConnections: { [Instance]: RBXScriptConnection } = {}
 local characterAddedConnections: { [Player]: RBXScriptConnection } = {}
 local missingBaseStatWarned: { [Instance]: boolean } = {}
+local initialWalkSpeedApplyTokens: { [Instance]: number } = {}
 local initialWalkSpeedApplyDelay = 0.15
+local hasInitialized = false
+local playerAddedConnection: RBXScriptConnection? = nil
+local playerRemovingConnection: RBXScriptConnection? = nil
+
+setmetatable(activeProfiles, { __mode = "k" })
+setmetatable(baseWalkSpeedChangedConnections, { __mode = "k" })
+setmetatable(characterAddedConnections, { __mode = "k" })
+setmetatable(missingBaseStatWarned, { __mode = "k" })
+setmetatable(initialWalkSpeedApplyTokens, { __mode = "k" })
 
 local defaultConfig: MovementConfig = {
 	ModesDefault = {
@@ -187,7 +197,15 @@ local function ApplyWalkSpeed(instance: Instance, profile: ActorMovementProfile)
 end
 
 local function ScheduleInitialWalkSpeedApply(instance: Instance, profile: ActorMovementProfile)
+	local token = (initialWalkSpeedApplyTokens[instance] or 0) + 1
+	initialWalkSpeedApplyTokens[instance] = token
+
 	task.delay(initialWalkSpeedApplyDelay, function()
+		local currentToken = initialWalkSpeedApplyTokens[instance]
+		if currentToken ~= token then
+			return
+		end
+
 		local currentProfile = activeProfiles[instance]
 		if currentProfile ~= profile then
 			return
@@ -197,8 +215,8 @@ local function ScheduleInitialWalkSpeedApply(instance: Instance, profile: ActorM
 	end)
 end
 
-local function DisconnectConnection(registry: { [Instance]: RBXScriptConnection }, key: Instance)
-	local connection = registry[key]
+local function DisconnectConnection(registry: any, key: Instance)
+	local connection = registry[key] :: RBXScriptConnection?
 	if connection then
 		connection:Disconnect()
 		registry[key] = nil
@@ -442,9 +460,12 @@ function MovementService:SetConfig(config: MovementConfig)
 end
 
 function MovementService:RegisterEntity(instance: Instance)
+	local hadProfile = activeProfiles[instance] ~= nil
 	local profile = GetOrCreateProfile(instance)
 	BindBaseWalkSpeedSignal(instance)
-	ScheduleInitialWalkSpeedApply(instance, profile)
+	if hadProfile then
+		ScheduleInitialWalkSpeedApply(instance, profile)
+	end
 
 	if instance:IsA("Player") then
 		local player = instance
@@ -466,6 +487,7 @@ end
 function MovementService:UnregisterEntity(instance: Instance)
 	DisconnectConnection(baseWalkSpeedChangedConnections, instance)
 	missingBaseStatWarned[instance] = nil
+	initialWalkSpeedApplyTokens[instance] = nil
 
 	if instance:IsA("Player") then
 		local player = instance
@@ -506,16 +528,22 @@ function MovementService:IsModeEnabled(instance: Instance, mode: MovementMode): 
 end
 
 function MovementService:Init()
+	if hasInitialized then
+		return
+	end
+
+	hasInitialized = true
+
 	MovementNetwork:RegisterActionRequestHandler(function(player: Player, payload: ActionRequestPayload)
 		HandleActionRequest(player, payload)
 	end)
 	MovementNetwork:Init()
 
-	Players.PlayerAdded:Connect(function(player)
+	playerAddedConnection = Players.PlayerAdded:Connect(function(player)
 		self:RegisterEntity(player)
 	end)
 
-	Players.PlayerRemoving:Connect(function(player)
+	playerRemovingConnection = Players.PlayerRemoving:Connect(function(player)
 		self:UnregisterEntity(player)
 	end)
 
@@ -524,6 +552,41 @@ function MovementService:Init()
 			self:RegisterEntity(player)
 		end)
 	end
+end
+
+function MovementService:Destroy()
+	if playerAddedConnection then
+		playerAddedConnection:Disconnect()
+		playerAddedConnection = nil
+	end
+
+	if playerRemovingConnection then
+		playerRemovingConnection:Disconnect()
+		playerRemovingConnection = nil
+	end
+
+	for player, connection in pairs(characterAddedConnections) do
+		connection:Disconnect()
+		characterAddedConnections[player] = nil
+	end
+
+	for instance in pairs(baseWalkSpeedChangedConnections) do
+		DisconnectConnection(baseWalkSpeedChangedConnections, instance)
+	end
+
+	for instance in pairs(activeProfiles) do
+		activeProfiles[instance] = nil
+	end
+
+	for instance in pairs(missingBaseStatWarned) do
+		missingBaseStatWarned[instance] = nil
+	end
+
+	for instance in pairs(initialWalkSpeedApplyTokens) do
+		initialWalkSpeedApplyTokens[instance] = nil
+	end
+
+	hasInitialized = false
 end
 
 -----------------------------

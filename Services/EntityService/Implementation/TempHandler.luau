@@ -28,6 +28,8 @@ local isInitialized = false
 
 local playerConnections: { [Player]: RBXScriptConnection } = {}
 
+setmetatable(playerConnections, { __mode = "k" })
+
 -----------------------------
 -- PRIVATE FUNCTIONS --
 -----------------------------

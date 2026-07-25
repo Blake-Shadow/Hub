@@ -1,0 +1,60 @@
+--!strict
+--@author: Shadow
+--@date:
+--[[@description:
+    Temporary bridge that applies class sync data to an entity model.
+]]
+-----------------------------
+-- SERVICES --
+-----------------------------
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+-----------------------------
+-- DEPENDENCIES --
+-----------------------------
+local ClassService = require(ReplicatedStorage.Services.ClassService.SystemPackage.ClassService)
+local EntityService = require("../SystemPackage/EntityService")
+
+-----------------------------
+-- VARIABLES --
+-----------------------------
+local _EntityService = {}
+local isInitialized = false
+
+-----------------------------
+-- PRIVATE FUNCTIONS --
+-----------------------------
+local function ResolveEntityModel(instance: Instance)
+    if instance:IsA("Player") then
+        return instance.Character
+    end
+
+    if instance:IsA("Model") then
+        return instance
+    end
+    return nil
+end
+
+local function ApplyClassSnapshot(instance: Instance)
+    
+end
+
+
+-----------------------------
+-- PUBLIC FUNCTIONS --
+-----------------------------
+function _EntityService.Init()
+    if isInitialized then
+        return
+    end
+
+    isInitialized = true
+
+
+end
+
+-----------------------------
+-- MAIN --
+-----------------------------
+return table.freeze(_EntityService)

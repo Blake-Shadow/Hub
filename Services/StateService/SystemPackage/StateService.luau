@@ -27,6 +27,11 @@ local StateService = {}
 
 local activeProfiles: { [Instance]: PlayerStateProfile? } = {}
 local masterConfig: MasterConfig? = nil
+local hasInitialized = false
+local playerAddedConnection: RBXScriptConnection? = nil
+local playerRemovingConnection: RBXScriptConnection? = nil
+
+setmetatable(activeProfiles, { __mode = "k" })
 
 -- Hook for EntityHandler to receive updated math calculations
 local activeStatUpdateHandler: ((instance: Instance, computedStats: { [string]: number }) -> ())? = nil
@@ -271,14 +276,20 @@ end
 
 --[[ Centralized lifecycle initialization ]]
 function StateService:Init()
+	if hasInitialized then
+		return
+	end
+
+	hasInitialized = true
+
 	StateNetwork:RegisterActionRequestHandler(function(player, actionName, data)
 		HandleActionRequest(player, actionName, data)
 	end)
 
-	Players.PlayerAdded:Connect(function(player)
+	playerAddedConnection = Players.PlayerAdded:Connect(function(player)
 		self:RegisterEntity(player)
 	end)
-	Players.PlayerRemoving:Connect(function(player)
+	playerRemovingConnection = Players.PlayerRemoving:Connect(function(player)
 		self:UnregisterEntity(player)
 		OnPlayerRemoving(player)
 	end)
@@ -288,6 +299,24 @@ function StateService:Init()
 			self:RegisterEntity(player)
 		end)
 	end
+end
+
+function StateService:Destroy()
+	if playerAddedConnection then
+		playerAddedConnection:Disconnect()
+		playerAddedConnection = nil
+	end
+
+	if playerRemovingConnection then
+		playerRemovingConnection:Disconnect()
+		playerRemovingConnection = nil
+	end
+
+	for instance in pairs(activeProfiles) do
+		activeProfiles[instance] = nil
+	end
+	activeStatUpdateHandler = nil
+	hasInitialized = false
 end
 -----------------------------
 -- MAIN --

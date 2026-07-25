@@ -5,5 +5,19 @@
   "luau-lsp.sourcemap.enabled": true,
   "luau-lsp.sourcemap.rojoProjectFile": "default.project.json",
   "luau-lsp.require.mode": "relativeToFile",
-  "Lua.diagnostics.enable": false
+  "editor.inlineSuggest.enabled": false,
+  "editor.suggestOnTriggerCharacters": true,
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": false
+  },
+  "editor.acceptSuggestionOnEnter": "smart",
+  "editor.tabCompletion": "on",
+  "github.copilot.enable": {
+    "*": false,
+    "plaintext": false,
+    "markdown": false,
+    "scminput": false
+  }
 }

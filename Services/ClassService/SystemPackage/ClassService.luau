@@ -32,6 +32,10 @@ local activeEntityProfiles: { [Instance]: ClassTypes.ActiveEntityState } = {}
 local entityDataKeys: { [Instance]: string } = {}
 local classChangedHandlers: { (instance: Instance, className: string) -> () } = {}
 local DEBUG_PRINT_SYNC_DATA = false
+local hasInitialized = false
+
+setmetatable(activeEntityProfiles, { __mode = "k" })
+setmetatable(entityDataKeys, { __mode = "k" })
 
 -- Constant data path keys used inside DataService mutations
 local PROFILE_DATA_PATH = "ClassProfile"
@@ -282,8 +286,30 @@ function ClassService.SetClass(instance: Instance, newClassName: string)
 	print(string.format("[ClassService] Instance %s changed class to %s", instance.Name, newClassName))
 end
 
-function ClassService.RegisterClassChangedHandler(handler: (instance: Instance, className: string) -> ())
+function ClassService.RegisterClassChangedHandler(handler: (instance: Instance, className: string) -> ()): () -> ()
+	for _, existingHandler in ipairs(classChangedHandlers) do
+		if existingHandler == handler then
+			return function()
+				for index, targetHandler in ipairs(classChangedHandlers) do
+					if targetHandler == handler then
+						table.remove(classChangedHandlers, index)
+						break
+					end
+				end
+			end
+		end
+	end
+
 	table.insert(classChangedHandlers, handler)
+
+	return function()
+		for index, existingHandler in ipairs(classChangedHandlers) do
+			if existingHandler == handler then
+				table.remove(classChangedHandlers, index)
+				break
+			end
+		end
+	end
 end
 
 -- Get Config from registry
@@ -303,6 +329,12 @@ function ClassService.GetSyncData(instance: Instance)
 end
 
 function ClassService.Init()
+	if hasInitialized then
+		return
+	end
+
+	hasInitialized = true
+
 	-- 1. Scan and scrape configuration structures matching your exact hierarchy path
 	local modulesFolder = ReplicatedStorage:FindFirstChild("Modules")
 	if not modulesFolder then
@@ -370,6 +402,19 @@ function ClassService.Init()
 			ProcessAllocationRequest(player, nodeName)
 		end)
 	end
+end
+
+function ClassService.Destroy()
+	table.clear(classRegistry)
+	for instance in pairs(activeEntityProfiles) do
+		activeEntityProfiles[instance] = nil
+	end
+
+	for instance in pairs(entityDataKeys) do
+		entityDataKeys[instance] = nil
+	end
+	table.clear(classChangedHandlers)
+	hasInitialized = false
 end
 -----------------------------
 -- MAIN --

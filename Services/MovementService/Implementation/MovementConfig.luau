@@ -1,17 +1,18 @@
 --!strict
 --@author: Shadow
---@date: 
+--@date: 2026/07/18
 --[[@description:
+	
 ]]
 -----------------------------
 -- SERVICES --
 -----------------------------
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -----------------------------
 -- DEPENDENCIES --
 -----------------------------
-local ClassTypes = require(ReplicatedStorage.Services.ClassService.SystemPackage.ClassTypes)
+local MovementService = require("./MovementService") :: any
+
 -----------------------------
 -- TYPES --
 -----------------------------
@@ -19,23 +20,9 @@ local ClassTypes = require(ReplicatedStorage.Services.ClassService.SystemPackage
 -----------------------------
 -- VARIABLES --
 -----------------------------
-local NoneConfig: ClassTypes.ClassConfig = {
-	DisplayName = "None",
-	ParentClass = nil,
-	BaseStats = {
-		BaseMaxHealth = 100,
-		BaseWalkSpeed = 16,
-		
-		Strenght = 0,
-	},
-	PrimaryResource = {
-		Type = "None",
-		BaseMaxAmount = 0,
-	},
-	Skills = {}, 
-	SkillTree = {},
-	Behavior = nil :: any,
-}
+local MovementConfig = {}
+
+
 -----------------------------
 -- PRIVATE FUNCTIONS --
 -----------------------------
@@ -47,4 +34,5 @@ local NoneConfig: ClassTypes.ClassConfig = {
 -----------------------------
 -- MAIN --
 -----------------------------
-return table.freeze(NoneConfig)
+
+return table.freeze(MovementConfig)
