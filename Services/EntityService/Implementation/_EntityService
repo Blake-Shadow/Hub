@@ -25,7 +25,7 @@ local isInitialized = false
 -----------------------------
 -- PRIVATE FUNCTIONS --
 -----------------------------
-local function ResolveEntityModel(instance: Instance)
+local function ResolveEntityModel(instance: Instance): Model?
     if instance:IsA("Player") then
         return instance.Character
     end
@@ -37,7 +37,18 @@ local function ResolveEntityModel(instance: Instance)
 end
 
 local function ApplyClassSnapshot(instance: Instance)
-    
+    local syncData = ClassService.GetSyncData(instance)
+    local model = ResolveEntityModel(instance)
+
+    if type(syncData) ~= "table" then
+        return
+    end
+
+    if not model then 
+        return
+    end
+
+    EntityService.Apply(model, syncData)
 end
 
 

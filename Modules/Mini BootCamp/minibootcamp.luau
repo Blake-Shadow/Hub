@@ -33,6 +33,7 @@ local function ApplyClassSnapshot(instance: Instance)
 end
 
 local function UnBindPlayer(player: Player)
-    
+end
 
 function BindPlayer(player: Player)
+end

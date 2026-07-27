@@ -27,6 +27,7 @@ type CombatFeedbackPayload = CombatTypes.CombatFeedbackPayload
 local CombatClient = {}
 
 local cachedLastFeedback: CombatFeedbackPayload? = nil
+local cachedWeaponEquipped = false
 local feedbackListeners: { (payload: CombatFeedbackPayload) -> () } = {}
 
 local isInitialized = false
@@ -37,6 +38,12 @@ local DEBUG_ENABLED = true
 -----------------------------
 local function NotifyFeedback(payload: CombatFeedbackPayload)
 	cachedLastFeedback = payload
+	if payload.ActionId == "WeaponEquip" then
+		cachedWeaponEquipped = true
+	elseif payload.ActionId == "WeaponUnequip" then
+		cachedWeaponEquipped = false
+	end
+
 	for _, listener in ipairs(feedbackListeners) do
 		task.spawn(listener, payload)
 	end
@@ -63,6 +70,18 @@ end
 
 function CombatClient.RequestBasicAttack(direction: Vector3?)
 	CombatClient.RequestPunch(direction)
+end
+
+function CombatClient.RequestWeaponEquip()
+	CombatClient.RequestAction("WeaponEquip", nil, nil)
+end
+
+function CombatClient.RequestWeaponUnequip()
+	CombatClient.RequestAction("WeaponUnequip", nil, nil)
+end
+
+function CombatClient.IsWeaponEquipped(): boolean
+	return cachedWeaponEquipped
 end
 
 function CombatClient.GetLastFeedback(): CombatFeedbackPayload?

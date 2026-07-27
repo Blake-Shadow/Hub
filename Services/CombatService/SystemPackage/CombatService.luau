@@ -36,6 +36,10 @@ type NormalizedCombatRequest = {
 	Meta: { [string]: any }?,
 }
 
+local ACTION_ID_PUNCH: CombatActionId = "Punch"
+local ACTION_ID_WEAPON_EQUIP: CombatActionId = "WeaponEquip"
+local ACTION_ID_WEAPON_UNEQUIP: CombatActionId = "WeaponUnequip"
+
 -----------------------------
 -- VARIABLES --
 -----------------------------
@@ -119,6 +123,7 @@ local function GetOrCreateProfile(instance: Instance): CombatProfile
 
 	local profile: CombatProfile = {
 		CooldownEndsAt = cooldownEndsAt,
+		IsWeaponEquipped = false,
 	}
 
 	activeProfiles[instance] = profile
@@ -184,7 +189,11 @@ local function NormalizeActionRequest(payload: any): NormalizedCombatRequest?
 	end
 
 	if actionId == "BasicAttack" then
-		actionId = "Punch"
+		actionId = ACTION_ID_PUNCH
+	elseif actionId == "EquipWeapon" then
+		actionId = ACTION_ID_WEAPON_EQUIP
+	elseif actionId == "UnequipWeapon" then
+		actionId = ACTION_ID_WEAPON_UNEQUIP
 	end
 
 	local direction: Vector3? = nil
@@ -276,7 +285,36 @@ local function ExecutePunch(
 	return hitCount, totalDamage, criticalHits
 end
 
+local function SetCharacterWeaponAttribute(attackerInstance: Instance, isEquipped: boolean)
+	local character = ResolveCharacter(attackerInstance)
+	if not character then
+		return
+	end
+
+	character:SetAttribute("WeaponEquipped", isEquipped)
+end
+
+local function ExecuteWeaponEquipStateChange(attackerInstance: Instance, shouldEquip: boolean): CombatFeedbackPayload
+	local profile = GetOrCreateProfile(attackerInstance)
+	profile.IsWeaponEquipped = shouldEquip
+	SetCharacterWeaponAttribute(attackerInstance, shouldEquip)
+
+	if shouldEquip then
+		return BuildFeedbackPayload(ACTION_ID_WEAPON_EQUIP, 0, 0, 0)
+	end
+
+	return BuildFeedbackPayload(ACTION_ID_WEAPON_UNEQUIP, 0, 0, 0)
+end
+
 local function ExecuteActionCore(attackerInstance: Instance, request: NormalizedCombatRequest): CombatFeedbackPayload?
+	if request.ActionId == ACTION_ID_WEAPON_EQUIP then
+		return ExecuteWeaponEquipStateChange(attackerInstance, true)
+	end
+
+	if request.ActionId == ACTION_ID_WEAPON_UNEQUIP then
+		return ExecuteWeaponEquipStateChange(attackerInstance, false)
+	end
+
 	local config = activeActionConfigs[request.ActionId]
 	if not config then
 		return nil
@@ -289,6 +327,10 @@ local function ExecuteActionCore(attackerInstance: Instance, request: Normalized
 	end
 
 	local profile = GetOrCreateProfile(attackerInstance)
+	if request.ActionId == ACTION_ID_PUNCH and not profile.IsWeaponEquipped then
+		return nil
+	end
+
 	if IsActionCoolingDown(profile, request.ActionId) then
 		return nil
 	end
@@ -297,7 +339,7 @@ local function ExecuteActionCore(attackerInstance: Instance, request: Normalized
 	local totalDamage = 0
 	local criticalHits = 0
 
-	if request.ActionId == "Punch" then
+	if request.ActionId == ACTION_ID_PUNCH then
 		hitCount, totalDamage, criticalHits = ExecutePunch(attackerCharacter, config, request.Direction)
 	end
 
@@ -340,7 +382,21 @@ function CombatService.ExecuteAction(
 end
 
 function CombatService:ClearEntity(instance: Instance)
+	SetCharacterWeaponAttribute(instance, false)
 	activeProfiles[instance] = nil
+end
+
+function CombatService:IsWeaponEquipped(instance: Instance): boolean
+	local profile = activeProfiles[instance]
+	if not profile then
+		return false
+	end
+
+	return profile.IsWeaponEquipped
+end
+
+function CombatService:SetWeaponEquipped(instance: Instance, shouldEquip: boolean)
+	ExecuteWeaponEquipStateChange(instance, shouldEquip)
 end
 
 function CombatService:Configure(config: CombatServiceInitConfig?)

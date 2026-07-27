@@ -45,6 +45,7 @@ export type CombatActionConfig = {
 
 export type CombatProfile = {
 	CooldownEndsAt: { [CombatActionId]: number },
+	IsWeaponEquipped: boolean,
 }
 
 export type CombatAttributeKeys = {

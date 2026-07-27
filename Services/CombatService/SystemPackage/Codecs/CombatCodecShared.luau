@@ -12,10 +12,16 @@ local CombatCodecShared = {}
 CombatCodecShared.ACTION_TO_ENUM = {
 	Punch = 1,
 	BasicAttack = 1,
+	WeaponEquip = 2,
+	WeaponUnequip = 3,
+	EquipWeapon = 2,
+	UnequipWeapon = 3,
 }
 
 CombatCodecShared.ENUM_TO_ACTION = {
 	[1] = "Punch",
+	[2] = "WeaponEquip",
+	[3] = "WeaponUnequip",
 }
 
 -----------------------------

@@ -26,6 +26,7 @@ local CombatClient = require(ReplicatedStorage.Services.CombatService.SystemPack
 local _CombatClient = {}
 local isInputBound = false
 local DEBUG_ENABLED = true
+local EQUIP_KEYCODE = Enum.KeyCode.E
 
 -----------------------------
 -- PRIVATE FUNCTIONS --
@@ -50,6 +51,18 @@ function _CombatClient.GetLastFeedback(): any
 	return CombatClient.GetLastFeedback()
 end
 
+function _CombatClient.IsWeaponEquipped(): boolean
+	return CombatClient.IsWeaponEquipped()
+end
+
+function _CombatClient.RequestWeaponEquip()
+	CombatClient.RequestWeaponEquip()
+end
+
+function _CombatClient.RequestWeaponUnequip()
+	CombatClient.RequestWeaponUnequip()
+end
+
 function _CombatClient.Init()
 	if isInputBound then
 		return
@@ -62,10 +75,32 @@ function _CombatClient.Init()
 		end
 
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			if not _CombatClient.IsWeaponEquipped() then
+				if DEBUG_ENABLED then
+					print("[_CombatClient] MouseButton1 ignored because weapon is not equipped.")
+				end
+				return
+			end
+
 			if DEBUG_ENABLED then
 				print("[_CombatClient] MouseButton1 detected -> RequestPunch (character forward)")
 			end
 			_CombatClient.RequestPunch(nil)
+			return
+		end
+
+		if input.KeyCode == EQUIP_KEYCODE then
+			if _CombatClient.IsWeaponEquipped() then
+				if DEBUG_ENABLED then
+					print("[_CombatClient] E detected -> RequestWeaponUnequip")
+				end
+				_CombatClient.RequestWeaponUnequip()
+			else
+				if DEBUG_ENABLED then
+					print("[_CombatClient] E detected -> RequestWeaponEquip")
+				end
+				_CombatClient.RequestWeaponEquip()
+			end
 		end
 	end)
 end
