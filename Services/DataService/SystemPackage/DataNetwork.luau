@@ -1,6 +1,6 @@
 --!strict
 --@author: Shadow
---@date: 
+--@date:
 --[[@description:
 ]]
 -----------------------------
@@ -39,37 +39,38 @@ local function BuildNetworkDirectory()
 		remotesFolder.Name = "Remotes"
 		remotesFolder.Parent = ReplicatedStorage.Assets
 	end
-	
-	local dataFolder = remotesFolder:FindFirstChild("Data")
+	local resolvedRemotesFolder = remotesFolder :: Folder
+
+	local dataFolder = resolvedRemotesFolder:FindFirstChild("Data")
 	if not dataFolder then
 		dataFolder = Instance.new("Folder")
 		dataFolder.Name = "Data"
-		dataFolder.Parent = remotesFolder
+		dataFolder.Parent = resolvedRemotesFolder
 	end
-	
-	local updateDataRemote = dataFolder:FindFirstChild("UpdateData") :: RemoteEvent
+	local resolvedDataFolder = dataFolder :: Folder
+
+	local updateDataRemote = resolvedDataFolder:FindFirstChild("UpdateData")
 	if not updateDataRemote then
 		updateDataRemote = Instance.new("RemoteEvent")
-		if updateDataRemote then
-            updateDataRemote.Name = "UpdateData"
-	        updateDataRemote.Parent = dataFolder
-        end
+		updateDataRemote.Name = "UpdateData"
+		updateDataRemote.Parent = resolvedDataFolder
 	end
-	
-	local requestDataRemote = dataFolder:FindFirstChild("RequestData") :: RemoteFunction
+	local resolvedUpdateRemote = updateDataRemote :: RemoteEvent
+
+	local requestDataRemote = resolvedDataFolder:FindFirstChild("RequestData")
 	if not requestDataRemote then
 		requestDataRemote = Instance.new("RemoteFunction")
-        if requestDataRemote then
-            requestDataRemote.Name = "RequestData"
-	        requestDataRemote.Parent = dataFolder
-        end
+		requestDataRemote.Name = "RequestData"
+		requestDataRemote.Parent = resolvedDataFolder
 	end
-	
+	local resolvedRequestRemote = requestDataRemote :: RemoteFunction
+
 	if RunService:IsClient() then
-		updateDataRemote = dataFolder:WaitForChild("UpdateData") :: RemoteEvent
-		requestDataRemote = dataFolder:WaitForChild("RequestData") :: RemoteFunction
+		resolvedUpdateRemote = resolvedDataFolder:WaitForChild("UpdateData") :: RemoteEvent
+		resolvedRequestRemote = resolvedDataFolder:WaitForChild("RequestData") :: RemoteFunction
 	end
-	return updateDataRemote, requestDataRemote
+
+	return resolvedUpdateRemote, resolvedRequestRemote
 end
 -----------------------------
 -- PUBLIC FUNCTIONS --
@@ -117,22 +118,28 @@ function DataNetwork.Init()
 			DataCodecs.DataRequestCodecName,
 			DataCodecs.DataResponseCodecName,
 			function(player: Player, _requestPayload: any)
-			if not activeRequestHandler then
-				error("[DATA NETWORK CRITICAL] Data retrieval request received, but no configuration handler was bound!")
-			end
+				if not activeRequestHandler then
+					error(
+						"[DATA NETWORK CRITICAL] Data retrieval request received, but no configuration handler was bound!"
+					)
+				end
 
-			local response = activeRequestHandler(player)
-			return DataCodecs.WrapData(response)
-		end,
+				local response = activeRequestHandler(player)
+				return DataCodecs.WrapData(response)
+			end,
 			DataCodecs.WrapData(nil)
 		)
 	elseif RunService:IsClient() then
-		BufferNetwork.BindClientEvent(DataNetwork.DataUpdateRemote, DataCodecs.DataUpdateCodecName, function(payload: any)
-			local dataPayload = DataCodecs.UnwrapData(payload)
-			if activeUpdateHandler then
-				activeUpdateHandler(dataPayload)
+		BufferNetwork.BindClientEvent(
+			DataNetwork.DataUpdateRemote,
+			DataCodecs.DataUpdateCodecName,
+			function(payload: any)
+				local dataPayload = DataCodecs.UnwrapData(payload)
+				if activeUpdateHandler then
+					activeUpdateHandler(dataPayload)
+				end
 			end
-		end)
+		)
 	end
 end
 -----------------------------

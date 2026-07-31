@@ -1,23 +1,13 @@
 {
   "files.associations": {
-    "*.luau": "luau"
+    "*.luau": "luau",
+    "*.lua": "luau"
   },
+  "luau-lsp.platform.type": "roblox",
   "luau-lsp.sourcemap.enabled": true,
+  "luau-lsp.sourcemap.autogenerate": true,
+  "luau-lsp.sourcemap.rojoPath": "rojo",
   "luau-lsp.sourcemap.rojoProjectFile": "default.project.json",
-  "luau-lsp.require.mode": "relativeToFile",
-  "editor.inlineSuggest.enabled": false,
-  "editor.suggestOnTriggerCharacters": true,
-  "editor.quickSuggestions": {
-    "other": true,
-    "comments": false,
-    "strings": false
-  },
-  "editor.acceptSuggestionOnEnter": "smart",
-  "editor.tabCompletion": "on",
-  "github.copilot.enable": {
-    "*": false,
-    "plaintext": false,
-    "markdown": false,
-    "scminput": false
-  }
+  "luau-lsp.sourcemap.sourcemapFile": "sourcemap.json",
+  "luau-lsp.require.mode": "relativeToFile"
 }

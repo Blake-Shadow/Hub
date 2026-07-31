@@ -25,7 +25,6 @@ local ClassTypes = require("./ClassTypes")
 -- VARIABLES --
 -----------------------------
 local ClassService = {}
-
 -- Static runtime schema configuration database
 local classRegistry: { [string]: ClassTypes.ClassConfig } = {}
 local activeEntityProfiles: { [Instance]: ClassTypes.ActiveEntityState } = {}
