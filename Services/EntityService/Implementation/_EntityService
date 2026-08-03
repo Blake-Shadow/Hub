@@ -51,10 +51,16 @@ local function ApplyClassSnapshot(instance: Instance)
     EntityService.Apply(model, syncData)
 end
 
+local function UnBindPlayer(player: Player)
 
+end
 -----------------------------
 -- PUBLIC FUNCTIONS --
 -----------------------------
+function BindPlayer(player: Player)
+    
+end
+
 function _EntityService.Init()
     if isInitialized then
         return
